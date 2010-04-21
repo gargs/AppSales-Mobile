@@ -51,6 +51,8 @@
 		[(UINavigationController *)rootViewController setToolbarHidden:NO];
 	}
 	
+	application.applicationIconBadgeNumber = 0;
+	
 	[window addSubview:rootViewController.view];
 	[window makeKeyAndVisible];
 }
@@ -61,6 +63,11 @@
 	[rootViewController release];
 	[window release];
 	[super dealloc];
+}
+
+- (void) applicationWillEnterForeground:(UIApplication *)application;
+{
+	application.applicationIconBadgeNumber = 0;
 }
 
 @end

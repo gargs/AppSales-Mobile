@@ -29,6 +29,7 @@
 	NSString *reviewDownloadStatus;
 	
 	BOOL cacheChanged;
+	UIBackgroundTaskIdentifier backgroundTask, reviewsBackgroundTask;
 }
 
 @property (retain) NSMutableDictionary *days;

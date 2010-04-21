@@ -51,8 +51,16 @@
 	[[CurrencyManager sharedManager] refreshIfNeeded];
 	
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveData) name:UIApplicationWillTerminateNotification object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveDataWhenPossible) name:UIApplicationWillEnterForegroundNotification object:nil];
+	
+	reviewsBackgroundTask = backgroundTask = UIInvalidBackgroundTask;
 	
 	return self;
+}
+
+- (void) saveDataWhenPossible;
+{
+	[self performSelector:@selector(saveData) withObject:nil afterDelay:3.0];
 }
 
 - (BOOL)loadReportCache
@@ -139,6 +147,13 @@
 {
 	if (isRefreshing)
 		return;
+	
+	if ([UIDevice currentDevice].multitaskingSupported) {
+		backgroundTask = 
+		[[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:^{
+			/* just fail if this happens. */
+		}];
+	}
 	
 	[UIApplication sharedApplication].idleTimerDisabled = YES;
 	
@@ -494,6 +509,20 @@
 
 - (void)downloadFailed
 {
+	if (backgroundTask != UIInvalidBackgroundTask) {
+		[[UIApplication sharedApplication] endBackgroundTask:backgroundTask];
+		backgroundTask = UIInvalidBackgroundTask;
+	}
+	
+	if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
+		
+		UILocalNotification* notif = [[UILocalNotification new] autorelease];
+		notif.alertBody = @"Reports download failed.";
+		
+		[[UIApplication sharedApplication] presentLocalNotificationNow:notif];
+		
+	}
+	
 	[UIApplication sharedApplication].idleTimerDisabled = NO;
 	
 	isRefreshing = NO;
@@ -533,6 +562,23 @@
 
 - (void)successfullyDownloadedWeeks:(NSDictionary *)newDays
 {
+	UIApplicationState s = [UIApplication sharedApplication].applicationState;
+	if (s == UIApplicationStateInactive || s == UIApplicationStateBackground) {
+		
+		UILocalNotification* notif = [[UILocalNotification new] autorelease];
+		notif.alertBody = @"Reports have been downloaded.";
+		notif.applicationIconBadgeNumber = [newDays count];
+		notif.soundName = UILocalNotificationDefaultSoundName;
+		
+		[[UIApplication sharedApplication] presentLocalNotificationNow:notif];
+		
+	}
+	
+	if (backgroundTask != UIInvalidBackgroundTask) {
+		[[UIApplication sharedApplication] endBackgroundTask:backgroundTask];
+		backgroundTask = UIInvalidBackgroundTask;
+	}
+	
 	[UIApplication sharedApplication].idleTimerDisabled = NO;
 	
 	isRefreshing = NO;
@@ -659,6 +705,13 @@
 {
 	if (isDownloadingReviews)
 		return;
+
+	if ([UIDevice currentDevice].multitaskingSupported) {
+		reviewsBackgroundTask = 
+		[[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:^{
+			/* just fail if this happens. */
+		}];
+	}
 	
 	[UIApplication sharedApplication].idleTimerDisabled = YES;
 	
@@ -1139,6 +1192,22 @@
 
 - (void)finishDownloadingReviews:(NSDictionary *)reviews
 {
+	if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
+		
+		UILocalNotification* notif = [[UILocalNotification new] autorelease];
+		notif.alertBody = [NSString stringWithFormat:@"%d reviews have been downloaded.", (int) [reviews count]];
+		notif.applicationIconBadgeNumber = [reviews count];
+		notif.soundName = UILocalNotificationDefaultSoundName;
+		
+		[[UIApplication sharedApplication] presentLocalNotificationNow:notif];
+		
+	}
+	
+	if (reviewsBackgroundTask != UIInvalidBackgroundTask) {
+		[[UIApplication sharedApplication] endBackgroundTask:reviewsBackgroundTask];
+		reviewsBackgroundTask = UIInvalidBackgroundTask;
+	}
+	
 	[UIApplication sharedApplication].idleTimerDisabled = NO;
 	
 	//NSLog(@"%@", reviews);
