@@ -148,10 +148,12 @@
 	if (isRefreshing)
 		return;
 	
+	UIApplication* app = [UIApplication sharedApplication];
 	if ([UIDevice currentDevice].multitaskingSupported) {
 		backgroundTask = 
-		[[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:^{
+		[app beginBackgroundTaskWithExpirationHandler:^{
 			/* just fail if this happens. */
+			[app endBackgroundTask:backgroundTask];
 		}];
 	}
 	
@@ -706,10 +708,12 @@
 	if (isDownloadingReviews)
 		return;
 
+	UIApplication* app = [UIApplication sharedApplication];
 	if ([UIDevice currentDevice].multitaskingSupported) {
 		reviewsBackgroundTask = 
-		[[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:^{
+		[app beginBackgroundTaskWithExpirationHandler:^{
 			/* just fail if this happens. */
+			[app endBackgroundTask:reviewsBackgroundTask];
 		}];
 	}
 	
