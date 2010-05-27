@@ -53,7 +53,7 @@
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveData) name:UIApplicationWillTerminateNotification object:nil];
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveDataWhenPossible) name:UIApplicationWillEnterForegroundNotification object:nil];
 	
-	reviewsBackgroundTask = backgroundTask = UIInvalidBackgroundTask;
+	reviewsBackgroundTask = backgroundTask = UIBackgroundTaskInvalid;
 	
 	return self;
 }
@@ -535,9 +535,9 @@
 
 - (void)downloadFailed
 {
-	if (backgroundTask != UIInvalidBackgroundTask) {
+	if (backgroundTask != UIBackgroundTaskInvalid) {
 		[[UIApplication sharedApplication] endBackgroundTask:backgroundTask];
-		backgroundTask = UIInvalidBackgroundTask;
+		backgroundTask = UIBackgroundTaskInvalid;
 	}
 	
 	if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
@@ -600,9 +600,9 @@
 		
 	}
 	
-	if (backgroundTask != UIInvalidBackgroundTask) {
+	if (backgroundTask != UIBackgroundTaskInvalid) {
 		[[UIApplication sharedApplication] endBackgroundTask:backgroundTask];
-		backgroundTask = UIInvalidBackgroundTask;
+		backgroundTask = UIBackgroundTaskInvalid;
 	}
 	
 	[UIApplication sharedApplication].idleTimerDisabled = NO;
@@ -1231,9 +1231,9 @@
 		
 	}
 	
-	if (reviewsBackgroundTask != UIInvalidBackgroundTask) {
+	if (reviewsBackgroundTask != UIBackgroundTaskInvalid) {
 		[[UIApplication sharedApplication] endBackgroundTask:reviewsBackgroundTask];
-		reviewsBackgroundTask = UIInvalidBackgroundTask;
+		reviewsBackgroundTask = UIBackgroundTaskInvalid;
 	}
 	
 	[UIApplication sharedApplication].idleTimerDisabled = NO;
