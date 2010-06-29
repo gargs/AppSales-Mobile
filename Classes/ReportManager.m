@@ -19,6 +19,15 @@
 #import "NSData+Compression.h"
 #import "ProgressHUD.h"
 
+static inline BOOL ILIsMultitaskingSupported() {
+	return [[UIDevice currentDevice] respondsToSelector:@selector(isMultitaskingSupported)] && [[UIDevice currentDevice] isMultitaskingSupported];
+}
+
+static inline UIApplicationState ILApplicationState() {
+	UIApplication* app = [UIApplication sharedApplication];
+	return [app respondsToSelector:@selector(applicationState)]? [app applicationState] : UIApplicationStateActive;
+}
+
 @implementation ReportManager
 
 @synthesize days, weeks, appsByID, reviewDownloadStatus, reportDownloadStatus;
@@ -51,9 +60,11 @@
 	[[CurrencyManager sharedManager] refreshIfNeeded];
 	
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveData) name:UIApplicationWillTerminateNotification object:nil];
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveDataWhenPossible) name:UIApplicationWillEnterForegroundNotification object:nil];
+	if (&UIApplicationWillEnterForegroundNotification)
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveDataWhenPossible) name:UIApplicationWillEnterForegroundNotification object:nil];
 	
-	reviewsBackgroundTask = backgroundTask = UIBackgroundTaskInvalid;
+	if (&UIBackgroundTaskInvalid)
+		reviewsBackgroundTask = backgroundTask = UIBackgroundTaskInvalid;
 	
 	return self;
 }
@@ -149,7 +160,7 @@
 		return;
 	
 	UIApplication* app = [UIApplication sharedApplication];
-	if ([UIDevice currentDevice].multitaskingSupported) {
+	if (ILIsMultitaskingSupported()) {
 		backgroundTask = 
 		[app beginBackgroundTaskWithExpirationHandler:^{
 			/* just fail if this happens. */
@@ -535,14 +546,15 @@
 
 - (void)downloadFailed
 {
-	if (backgroundTask != UIBackgroundTaskInvalid) {
+	if (&UIBackgroundTaskInvalid && backgroundTask != UIBackgroundTaskInvalid) {
 		[[UIApplication sharedApplication] endBackgroundTask:backgroundTask];
 		backgroundTask = UIBackgroundTaskInvalid;
 	}
 	
-	if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
+	Class c = NSClassFromString(@"UILocalNotification");
+	if (c && ILApplicationState() != UIApplicationStateActive) {
 		
-		UILocalNotification* notif = [[UILocalNotification new] autorelease];
+		UILocalNotification* notif = [[c new] autorelease];
 		notif.alertBody = @"Reports download failed.";
 		
 		[[UIApplication sharedApplication] presentLocalNotificationNow:notif];
@@ -588,10 +600,11 @@
 
 - (void)successfullyDownloadedWeeks:(NSDictionary *)newDays
 {
-	UIApplicationState s = [UIApplication sharedApplication].applicationState;
-	if (s == UIApplicationStateInactive || s == UIApplicationStateBackground) {
+	Class c = NSClassFromString(@"UILocalNotification");
+	UIApplicationState s = ILApplicationState();
+	if (c && s == UIApplicationStateInactive || s == UIApplicationStateBackground) {
 		
-		UILocalNotification* notif = [[UILocalNotification new] autorelease];
+		UILocalNotification* notif = [[c new] autorelease];
 		notif.alertBody = @"Reports have been downloaded.";
 		notif.applicationIconBadgeNumber = [newDays count];
 		notif.soundName = UILocalNotificationDefaultSoundName;
@@ -600,7 +613,7 @@
 		
 	}
 	
-	if (backgroundTask != UIBackgroundTaskInvalid) {
+	if (&UIBackgroundTaskInvalid && backgroundTask != UIBackgroundTaskInvalid) {
 		[[UIApplication sharedApplication] endBackgroundTask:backgroundTask];
 		backgroundTask = UIBackgroundTaskInvalid;
 	}
@@ -1220,9 +1233,10 @@
 
 - (void)finishDownloadingReviews:(NSDictionary *)reviews
 {
-	if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
+	Class c = NSClassFromString(@"UILocalNotification");
+	if (c && [UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
 		
-		UILocalNotification* notif = [[UILocalNotification new] autorelease];
+		UILocalNotification* notif = [[c new] autorelease];
 		notif.alertBody = [NSString stringWithFormat:@"%d reviews have been downloaded.", (int) [reviews count]];
 		notif.applicationIconBadgeNumber = [reviews count];
 		notif.soundName = UILocalNotificationDefaultSoundName;
