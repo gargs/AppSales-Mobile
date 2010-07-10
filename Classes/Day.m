@@ -91,8 +91,11 @@
 			//IA1: In-App Purchase
 			//IA7: In-App Free Upgrade / Repurchase (?)
 			//IA9: In-App Subscription
-			if ([transactionType isEqualToString:@"IA1"] || [transactionType isEqualToString:@"IA9"]) transactionType = @"1";
-			if ([transactionType isEqualToString:@"IA7"]) transactionType = @"7";
+			if ([transactionType isEqualToString:@"IA1"]) transactionType = @"2";
+			else
+				if([transactionType isEqualToString:@"IA9"]) transactionType = @"9";
+			else
+				if ([transactionType isEqualToString:@"IA7"]) transactionType = @"7";
 			
 			Country *country = [self countryNamed:countryString]; //will be created on-the-fly if needed.
 			Entry *entry = [[[Entry alloc] initWithProductName:productName 
@@ -114,10 +117,11 @@
 	NSMutableDictionary *salesByApp = [NSMutableDictionary dictionary];
 	for (Country *country in [self.countries allValues]) {
 		for (Entry *entry in country.entries) {
-			if (entry.transactionType == 1) {
+			if (entry.purchase ) {
 				NSNumber *newCount = [NSNumber numberWithInt:[[salesByApp objectForKey:entry.productName] intValue] + entry.units];
 				[salesByApp setObject:newCount forKey:entry.productName];
-				NSNumber *newRevenue = [NSNumber numberWithFloat:[[revenueByCurrency objectForKey:entry.currency] floatValue] + entry.royalties * entry.units];
+				NSNumber *oldRevenue = [revenueByCurrency objectForKey:entry.currency];
+				NSNumber *newRevenue = [NSNumber numberWithFloat:(oldRevenue ? [oldRevenue floatValue] : 0.0) + entry.royalties * entry.units];
 				[revenueByCurrency setObject:newRevenue forKey:entry.currency];
 			}
 		}
@@ -218,7 +222,7 @@
 		NSMutableDictionary *salesByProduct = [NSMutableDictionary dictionary];
 		for (Country *c in [self.countries allValues]) {
 			for (Entry *e in [c entries]) {
-				if ([e transactionType] == 1) {
+				if (e.purchase) {
 					NSNumber *unitsOfProduct = [salesByProduct objectForKey:[e productName]];
 					int u = (unitsOfProduct != nil) ? ([unitsOfProduct intValue]) : 0;
 					u += [e units];
@@ -266,27 +270,26 @@
 	}
 }
 
-- (float)totalRevenueInBaseCurrencyForApp:(NSString *)app
-{
-	if (app == nil)
+- (float)totalRevenueInBaseCurrencyForAppWithID:(NSString *)appID {
+	if (appID == nil)
 		return [self totalRevenueInBaseCurrency];
 	float sum = 0.0;
 	for (Country *c in [self.countries allValues]) {
-		sum += [c totalRevenueInBaseCurrencyForApp:app];
+		sum += [c totalRevenueInBaseCurrencyForAppWithID:appID];
 	}
 	return sum;
 }
 
-- (int)totalUnitsForApp:(NSString *)app
-{
-	if (app == nil)
+- (int)totalUnitsForAppWithID:(NSString *)appID {
+	if (appID == nil)
 		return [self totalUnits];
 	int sum = 0;
 	for (Country *c in [self.countries allValues]) {
-		sum += [c totalUnitsForApp:app];
+		sum += [c totalUnitsForAppWithID:appID];
 	}
 	return sum;
 }
+
 
 - (int)totalUnits
 {
@@ -313,7 +316,8 @@
 
 - (NSString *)totalRevenueStringForApp:(NSString *)appName
 {
-	return [[CurrencyManager sharedManager] baseCurrencyDescriptionForAmount:[NSNumber numberWithFloat:[self totalRevenueInBaseCurrencyForApp:appName]] withFraction:YES];
+	NSString *appID = [[ReportManager sharedManager] appIDForAppName:appName];
+	return [[CurrencyManager sharedManager] baseCurrencyDescriptionForAmount:[NSNumber numberWithFloat:[self totalRevenueInBaseCurrencyForAppWithID:appID]] withFraction:YES];
 }
 
 - (NSString *)dayString
@@ -383,6 +387,16 @@
 	} else {
 		return [NSString stringWithFormat:@"day_%@.dat", dateString];
 	}
+}
+
+- (NSString *)appIDForApp:(NSString *)appName {
+	NSString *appID = nil;
+	for(Country *c in [self.countries allValues]){
+		appID = [c appIDForApp:appName];
+		if(appID)
+			break;
+	}
+	return appID;
 }
 
 - (void)dealloc
